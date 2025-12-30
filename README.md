@@ -1,20 +1,22 @@
-# 🌍 AI Multi-Agent Trip Advisor
+# Multi-Agent Trip Planner
 
-An intelligent trip planning app powered by **LangGraph**, **Google Gemini API**, **Tavily API**, and **Wikipedia**.  
-This system uses multiple specialized agents (research, flights, hotels, weather, activities, itinerary) orchestrated via LangGraph to design a personalized travel itinerary.  
-The app generates detailed itineraries with PDFs and real-time travel insights.
+The **Multi-Agent Trip Planner** is an intelligent travel planning application built using **LangGraph**, **Google Gemini API**, **Tavily API**, and **Wikipedia**.  
+It leverages a coordinated set of specialized AI agents to research destinations, analyze travel options, and generate a personalized, end-to-end travel itinerary.
+
+The system produces detailed, user-specific itineraries with real-time insights and supports exporting the final plan as a **PDF**.
 
 ---
 
-## 🚀 Features
-- 🤖 **Multi-Agent Orchestration** using LangGraph  
-- 🗺️ **Destination Research** (Wikipedia + Tavily search)  
-- 🌦️ **Weather Forecasts**  
-- ✈️ **Flight Options**  
-- 🏨 **Hotel Recommendations**  
-- 🎯 **Activity Suggestions** based on interests  
-- 📋 **Final AI-Generated Itinerary**  
-- 📄 **PDF Export** 
+## 🚀 Key Features
+
+- 🤖 **Multi-Agent Architecture** orchestrated with LangGraph  
+- 🗺️ **Destination Research** using Wikipedia and Tavily Search  
+- 🌦️ **Weather Forecast Integration**  
+- ✈️ **Flight Recommendations**  
+- 🏨 **Hotel Suggestions**  
+- 🎯 **Activity Planning** based on user interests  
+- 📋 **AI-Generated Day-by-Day Itinerary**  
+- 📄 **PDF Export** for offline access  
 
 ---
 
@@ -23,96 +25,87 @@ The app generates detailed itineraries with PDFs and real-time travel insights.
 ### Workflow Diagram
 ![Workflow](https://github.com/ManaswiniGupta/MultiAgent-AI-Trip-Planner/blob/main/Demo%20Images/agent.png)
 
-## 🖼️ Screenshots
+---
 
-### App UI
+### Application UI
 
-(./demo/UI.png)
-(./demo/preparing_trip.png)
-(./demo/image1.png)
-(./demo/image2.png)
-(./demo/image3.png)
-(./demo/image4.png)
-(./demo/image5.png)
-(./demo/image6.png)
-(./demo/image7.png)
-(./demo/image8.png)
-(./demo/image9.png)
-(./demo/image10.png)
-(./demo/image11.png)
-(./demo/image12.png)
-(./demo/image13.png)
+![UI](./demo/UI.png)
+![Preparing Trip](./demo/preparing_trip.png)
 
+![Screen 1](./demo/image1.png)
+![Screen 2](./demo/image2.png)
+![Screen 3](./demo/image3.png)
+![Screen 4](./demo/image4.png)
+![Screen 5](./demo/image5.png)
 
+![Screen 6](./demo/image6.png)
+![Screen 7](./demo/image7.png)
+![Screen 8](./demo/image8.png)
+![Screen 9](./demo/image9.png)
+![Screen 10](./demo/image10.png)
 
-## 📦 Installation
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/sakshivedi-1/MULTI_AGENT_TRIP_PLANNER.git
-cd ai-trip-advisor
-```
-
-### 2. Create a Python environment (Python 3.10 recommended)
-```bash
-python -m venv .venv
-source .venv/bin/activate   # On Linux/Mac
-.venv\Scripts\activate      # On Windows
-```
-
-### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+![Screen 11](./demo/image11.png)
+![Screen 12](./demo/image12.png)
+![Screen 13](./demo/image13.png)
 
 ---
 
-## 🔑 API Keys Setup
+## 📦 Installation
 
-The app requires **Google Gemini**, **Tavily**, and optional **Gmail SMTP** credentials.
+### 1. Clone the Repository
+```bash
+git clone https://github.com/sakshivedi-1/MULTI_AGENT_TRIP_PLANNER.git
+cd ai-trip-advisor
 
-### Create a `.env` file in the project root:
-```ini
+### create virtual environment
+python -m venv .venv
+source .venv/bin/activate   # Linux / macOS
+.venv\Scripts\activate      # Windows
+
+### Install dependencies
+pip install -r requirements.txt
+
+### API Key Configuration
+
+This application requires credentials for Google Gemini and Tavily.
+
+.env (for local development)
 GOOGLE_API_KEY="your_google_gemini_api_key"
 TAVILY_API_KEY="your_tavily_api_key"
-```
 
-### Configure Streamlit secrets in `.streamlit/secrets.toml`:
-```toml
+.streamlit/secrets.toml (recommended for Streamlit)
 GOOGLE_API_KEY = "your_google_gemini_api_key"
 TAVILY_API_KEY = "your_tavily_api_key"
 
 
-```
+⚠️ Ensure secret files are excluded from version control.
 
----
-
-## ▶️ Run the App
-
-```bash
+### ▶️ Running the Application
 streamlit run app.py
-```
 
-The app will launch in your browser (default: `http://localhost:8501`).
 
----
+The application will be available at:
+http://localhost:8501
 
-## 📚 Tech Stack
+## 📚 Technology Stack
 
-* **LangGraph** → Multi-agent orchestration  
-* **LangChain** → LLM pipeline integration  
-* **Google Gemini API** → LLM for reasoning and itinerary generation  
-* **Tavily API** → Web search (real-time places, hotels, activities)  
-* **Wikipedia API** → Enrich destination information  
-* **Streamlit** → Interactive UI  
-* **ReportLab / Markdown-PDF** → PDF generation  
-* **SMTP (Gmail)** → Send itineraries via email  
+LangGraph — Multi-agent orchestration
 
----
+LangChain — LLM pipeline integration
 
-## ✅ Example Workflow
+Google Gemini API — Reasoning and itinerary generation
 
-```mermaid
+Tavily API — Real-time web search (hotels, places, activities)
+
+Wikipedia API — Destination knowledge enrichment
+
+Streamlit — Interactive frontend
+
+ReportLab / Markdown-PDF — PDF generation
+
+SMTP (Gmail) — Email delivery of itineraries
+
+## 🔄 System Workflow
 flowchart TD
     A[Research Agent] --> B[Places Agent]
     B --> C[Flights Agent]
@@ -126,35 +119,21 @@ flowchart TD
     F -->|All complete| G[Activities Agent]
     G --> H[Itinerary Agent]
     H --> I[Final Output: PDF / Text]
-```
 
-1. **Research Agent** → Collects basic destination info  
-2. **Places & Weather Agents** → Run in parallel  
-3. **Flights & Hotels Agents** → Run in parallel  
-4. **Sync Gate** → Waits for all parallel branches to complete  
-5. **Activities Agent** → Suggests things to do  
-6. **Itinerary Agent** → Compiles everything into a day-by-day plan  
-7. **User Options** → Download PDF or email itinerary  
+## Workflow Explanation
 
----
+Research Agent gathers foundational destination information
 
-## 🛠 Troubleshooting
+Places and Weather Agents execute in parallel
 
-* Ensure **Python 3.10** is installed.  
-* Double-check API keys in both `.env` and `.streamlit/secrets.toml`.  
-* For Gmail email sending, enable **App Passwords** (not your main password).  
-* If Streamlit UI resets, use **session state** properly to persist form data.  
+Flights and Hotels Agents execute in parallel
 
----
+Sync Gate ensures all parallel tasks complete
 
-## 📜 License
-MIT License – free to use and modify.  
+Activities Agent curates personalized experiences
 
----
+Itinerary Agent assembles a structured travel plan
 
-## ✨ Credits
-Built with ❤️ using:  
-* [LangGraph](https://github.com/langchain-ai/langgraph)  
-* [Google Gemini](https://ai.google.dev/)  
-* [Tavily](https://tavily.com/)  
-* [Wikipedia](https://www.wikipedia.org/)  
+User Output is delivered as text or downloadable PDF
+
+
