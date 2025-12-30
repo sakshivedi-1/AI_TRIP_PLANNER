@@ -20,12 +20,6 @@ The system produces detailed, user-specific itineraries with real-time insights 
 
 ---
 
-## 🖼️ Screenshots
-
-### Workflow Diagram
-![Workflow](https://github.com/ManaswiniGupta/MultiAgent-AI-Trip-Planner/blob/main/Demo%20Images/agent.png)
-
----
 
 ### Application UI
 
