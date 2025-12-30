@@ -56,27 +56,30 @@ The system produces detailed, user-specific itineraries with real-time insights 
 ```bash
 git clone https://github.com/sakshivedi-1/MULTI_AGENT_TRIP_PLANNER.git
 cd ai-trip-advisor
-
+```
 ### create virtual environment
+```
 python -m venv .venv
 source .venv/bin/activate   # Linux / macOS
 .venv\Scripts\activate      # Windows
-
+```
 ### Install dependencies
+```
 pip install -r requirements.txt
-
+```
 ### API Key Configuration
 
 This application requires credentials for Google Gemini and Tavily.
-
+```
 .env (for local development)
 GOOGLE_API_KEY="your_google_gemini_api_key"
 TAVILY_API_KEY="your_tavily_api_key"
-
+```
+```
 .streamlit/secrets.toml (recommended for Streamlit)
 GOOGLE_API_KEY = "your_google_gemini_api_key"
 TAVILY_API_KEY = "your_tavily_api_key"
-
+```
 
 ⚠️ Ensure secret files are excluded from version control.
 
@@ -86,6 +89,7 @@ streamlit run app.py
 
 The application will be available at:
 http://localhost:8501
+
 
 ## 📚 Technology Stack
 
