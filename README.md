@@ -45,20 +45,23 @@ Check out a real example of an itinerary generated for Varanasi:
 
 ## 📦 Installation
 
-### 1. Clone the Repository
+### Clone the Repository
 ```bash
 git clone [https://github.com/sakshivedi-1/AI_TRIP_PLANNER.git](https://github.com/sakshivedi-1/AI_TRIP_PLANNER.git)
 cd ai-trip-planner
-
+```
+```
 python -m venv .venv
 source .venv/bin/activate   # Linux / macOS
 .venv\Scripts\activate      # Windows
-
+```
+### Install Requirements
+```
 pip install -r requirements.txt
-
-### 4. API Key & Email Configuration
+```
+### API Key & Email Configuration
 This application requires credentials for Google Gemini, Tavily, and Gmail (for the email feature).
-
+```
 Create a .streamlit/secrets.toml file (Recommended for Streamlit):
 
 GOOGLE_API_KEY = "your_google_gemini_api_key"
@@ -67,7 +70,7 @@ TAVILY_API_KEY = "your_tavily_api_key"
 # Optional: Required only if you want to use the Email feature
 GMAIL_USER = "your_email@gmail.com"
 GMAIL_APP_PASSWORD = "your_app_password"
-
+```
 Note: For GMAIL_APP_PASSWORD, go to your Google Account > Security > 2-Step Verification > App Passwords to generate a 16-digit password. DO NOT use your regular Gmail password.
 
 ### Running the Application
@@ -97,7 +100,7 @@ SMTP (Gmail) — Email delivery of itineraries
 
 ### 🔄 System Workflow
 Code snippet
-
+```
 flowchart TD
     A[Research Agent] --> B[Places Agent]
     B --> C[Travel Agent]
@@ -115,9 +118,9 @@ Workflow Explanation
 Research Agent: Gathers foundational destination info and estimates local living costs.
 
 Places Agent: Identifies top tourist attractions.
-
+```
 #### Parallel Agents:
-
+```
 Travel Agent: Searches for Flights, Trains, and Buses (e.g., RedBus) from the Origin.
 
 Hotels Agent: Finds accommodation fitting the budget.
@@ -131,3 +134,4 @@ Activities Agent: Curates personalized experiences based on user interests.
 Itinerary Agent: Assembles all data into a cohesive day-by-day plan.
 
 User Output: Delivered as a displayed itinerary, downloadable PDF, and via Email.
+```
