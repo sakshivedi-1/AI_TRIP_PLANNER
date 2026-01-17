@@ -35,7 +35,6 @@ It leverages a coordinated set of specialized AI agents to research destinations
 ![Screen 9](./demo/image9.png)
 ![Screen 10](./demo/image10.png)
 ![Screen 11](./demo/image11.png)
-![Screen 12](./demo/image12.png)
 ### 📄 Sample Itinerary Output
 Check out a real example of an itinerary generated for Varanasi:
 
