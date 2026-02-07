@@ -22,10 +22,21 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from operator import add
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from typing_extensions import Annotated
 from langchain_community.utilities import WikipediaAPIWrapper
 from tavily import TavilyClient
+
+import os
+import streamlit as st
+
+def get_secret(key: str, default=None):
+    """
+    Priority:
+    1. Kubernetes / Docker environment variables
+    2. Streamlit secrets.toml (local dev)
+    """
+    return os.getenv(key) or st.secrets.get(key, default)
 
 # Set up page config
 st.set_page_config(
@@ -63,40 +74,42 @@ def get_wikipedia_image(query: str, delay: float = 0.5) -> Optional[str]:
     
     return None
 
-# Initialize APIs
 @st.cache_resource
 def initialize_apis():
-    """Initialize all API clients"""
     try:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=st.secrets.get("GOOGLE_API_KEY", ""),
+        llm = ChatGroq(
+            model_name="llama-3.3-70b-versatile",
+            groq_api_key=get_secret("GROQ_API_KEY"),
             temperature=0.7
         )
-        
-        tavily_client = TavilyClient(api_key=st.secrets.get("TAVILY_API_KEY", ""))
+
+        tavily_client = TavilyClient(
+            api_key=get_secret("TAVILY_API_KEY")
+        )
+
         wikipedia = WikipediaAPIWrapper()
-        
         return llm, tavily_client, wikipedia
+
     except Exception as e:
-        st.error(f"Error initializing APIs: {str(e)}")
+        st.error(f"Error initializing APIs: {e}")
         return None, None, None
 
 # Enhanced state structure with Annotated fields for parallel updates
 class TripPlannerState(TypedDict):
-    origin: str  # Added Origin
+    origin: str 
     destination: str
+    stopovers: str 
     start_date: str
     end_date: str
     budget: int
     num_travelers: int
     interests: List[str]
+    # REMOVED: num_places and user_preferences
     
     # Agent outputs with Annotated for parallel updates
     destination_info: Dict[str, Any]
     destination_image: Optional[str]
     places_info: List[Dict[str, Any]]
-    # Renamed to general travel options to include trains/buses
     travel_options: List[Dict[str, Any]] 
     hotel_options: List[Dict[str, Any]]
     activities: List[Dict[str, Any]]
@@ -112,31 +125,34 @@ class TripPlannerState(TypedDict):
 llm, tavily_client, wikipedia = initialize_apis()
 
 def research_agent(state: TripPlannerState) -> TripPlannerState:
-    """Research destination, local costs, and get main image"""
+    """Research destination AND stopovers, local costs, and get main image"""
     try:
         destination = state["destination"]
-        st.write(f"🔍 Researching {destination} and local costs...")
+        stopovers = state.get("stopovers", "")
         
-        # Get Wikipedia information
-        wiki_result = wikipedia.run(f"{destination} travel tourism")
+        st.write(f"🔍 Researching {destination} and stopovers ({stopovers})...")
+        
+        # Get Wikipedia information for both
+        search_query = f"{destination} {stopovers} travel tourism"
+        wiki_result = wikipedia.run(search_query)
         
         # Get destination image
         destination_image = get_wikipedia_image(f"{destination} landmark")
         
-        # Extract key info using LLM - ADDED request for local prices
+        # Extract key info using LLM
         prompt = f"""
-        Extract key travel information from this Wikipedia content about {destination}:
+        Extract key travel information from this Wikipedia content about {destination} and {stopovers}:
         {wiki_result[:2000]}
         
-        Also consider general knowledge about {destination} to answer the following.
+        Also consider general knowledge about these places.
 
         Return a JSON with:
-        - description: 2-sentence overview
+        - description: 2-sentence overview of the main destination.
+        - stopover_brief: Brief 1-sentence description of the stopovers ({stopovers}).
         - best_time_to_visit: season/months
         - currency: local currency
         - language: main language(s)
-        - timezone: timezone info
-        - local_prices: Estimate cost for local things like boat rides, street food, taxi per km (be specific about low-cost options).
+        - local_prices: Estimate cost for local things like boat rides, street food, taxi per km.
         - key_facts: 3 interesting facts as list
         """
         
@@ -162,24 +178,30 @@ def research_agent(state: TripPlannerState) -> TripPlannerState:
             "destination_info": {"error": str(e)},
             "destination_image": None,
             "error_messages": [f"Research error: {str(e)}"],
+            "current_step": ["research_complete"],
         }
 
 
 def places_agent(state: TripPlannerState) -> dict:
-    """Agent to fetch top places using Tavily"""
+    """Agent to fetch top places using Tavily (for Destination AND Stopovers)"""
     try:
         destination = state["destination"]
-        st.write(f"📍 Finding places for {destination}...")
+        stopovers = state.get("stopovers", "")
+        # REMOVED: limit from state, using default
+        limit = 6 
+        
+        st.write(f"📍 Finding top places for {destination} and {stopovers}...")
 
-        places_query = f"top tourist attractions in {destination}"
+        places_query = f"top tourist attractions in {destination} and {stopovers}"
+        
         places_result = tavily_client.search(
             query=places_query,
             search_depth="basic",
-            max_results=6
+            max_results=limit + 2 # Fetch a few more to cover both
         )
 
         places_info = []
-        for r in places_result.get("results", [])[:6]:
+        for r in places_result.get("results", [])[:limit]:
             place_details = {
                 "name": r.get("title", ""),
                 "rating": None,   
@@ -203,7 +225,8 @@ def places_agent(state: TripPlannerState) -> dict:
     except Exception as e:
         return {
             "places_info": [],
-            "error_messages": [f"Places error: {str(e)}"]
+            "error_messages": [f"Places error: {str(e)}"],
+            "current_step": ["places_complete"],
         }
 
 
@@ -235,7 +258,8 @@ def weather_agent(state: TripPlannerState) -> dict:
     except Exception as e:
         return {
             "weather_info": {},
-            "error_messages": [f"Weather error: {str(e)}"]
+            "error_messages": [f"Weather error: {str(e)}"],
+            "current_step": ["weather_complete"],
         }
 
 
@@ -249,7 +273,6 @@ def activities_agent(state: TripPlannerState) -> TripPlannerState:
         
         activities = []
         for interest in interests[:3]:
-            # Modified query to find local prices for activities too
             query = f"{interest} activities events {destination} 2024 things to do cost price"
             results = tavily_client.search(
                 query=query,
@@ -277,6 +300,7 @@ def activities_agent(state: TripPlannerState) -> TripPlannerState:
         return {
             "activities": [],
             "error_messages": [f"Activities error: {str(e)}"],
+            "current_step": ["activities_complete"],
         }
 
 def itinerary_agent(state: TripPlannerState) -> TripPlannerState:
@@ -284,61 +308,57 @@ def itinerary_agent(state: TripPlannerState) -> TripPlannerState:
     try:
         st.write("📝 Generating your personalized itinerary...")
         
-        # Calculate trip duration
         start = datetime.strptime(state["start_date"], "%Y-%m-%d")
         end = datetime.strptime(state["end_date"], "%Y-%m-%d")
         duration = (end - start).days
         
-        # ADDED: Explicit instructions for Origin, Local Prices, and Transport
+        # REMOVED: Must Visit Places / User Preferences logic from prompt
         prompt = f"""
-        Create a detailed {duration}-day trip itinerary for {state["destination"]} starting from {state["origin"]}.
+        Create a detailed {duration}-day trip itinerary starting from {state["origin"]}, visiting {state["stopovers"]}, and ending in {state["destination"]}.
+        
+        TRIP STRUCTURE:
+        1. Start: {state["origin"]}
+        2. Stopovers (En-route): {state["stopovers"]}
+        3. Main Destination: {state["destination"]}
         
         TRIP DETAILS:
-        - Origin: {state["origin"]}
-        - Destination: {state["destination"]}
         - Dates: {state["start_date"]} to {state["end_date"]} ({duration} days)
         - Budget: ${state["budget"]} for {state["num_travelers"]} travelers
         - Interests: {", ".join(state["interests"])}
         
         AVAILABLE DATA:
-        Destination Info: {json.dumps(state.get("destination_info", {}))}
-        Top Places: {json.dumps([p.get("name", "") for p in state.get("places_info", [])[:5]])}
-        Travel Options (Flights/Trains/Bus): {json.dumps(state.get("travel_options", []))}
+        Destination/Stopover Info: {json.dumps(state.get("destination_info", {}))}
+        Top Places Found: {json.dumps([p.get("name", "") for p in state.get("places_info", [])])}
+        Travel Options: {json.dumps(state.get("travel_options", []))}
         Hotel Options: {json.dumps(state.get("hotel_options", []))}
-        Activities: {json.dumps([a.get("title", "") for a in state.get("activities", [])[:6]])}
-        Weather: {json.dumps(state.get("weather_info", {}))}
         
-        CREATE A COMPREHENSIVE ITINERARY WITH:
+        CREATE A CHRONOLOGICAL ITINERARY:
         
         ## 🗓️ TRIP OVERVIEW
-        - Destination summary
-        - Duration and dates
-        - Total Estimated Cost breakdown
+        - Route: {state["origin"]} -> {state["stopovers"]} -> {state["destination"]}
+        - Total Duration & Budget
         
-        ## 🚆 TRAVEL & ARRIVAL (IMPORTANT)
-        - Compare Flights vs Trains vs Bus (RedBus) based on the provided Travel Options.
-        - Recommend the best mode of transport from {state["origin"]} to {state["destination"]} considering the budget of ${state["budget"]}.
+        ## 🚆 MULTI-CITY TRAVEL PLAN
+        - **Leg 1:** {state["origin"]} to {state["stopovers"]} (Suggest Train/Bus/Taxi options & duration)
+        - **Leg 2:** {state["stopovers"]} to {state["destination"]}
+        - **Return:** {state["destination"]} back to {state["origin"]}
         
-        ## 🏨 ACCOMMODATION
-        - Top recommendations from search results.
+        ## 🏨 ACCOMMODATION PLAN
+        - Suggest where to stay (e.g., "Stay 1 night in [Stopover] and rest in [Destination]").
         
         ## 📅 DAY-BY-DAY ITINERARY
-        For each day include:
-        - Morning/Afternoon/Evening activities.
-        - **LOCAL TRANSPORT:** Suggest how to get around (e.g., "Take a boat ride for approx $2", "Auto-rickshaw cost approx $5").
-        - **LOCAL COSTS:** Mention prices for food/entry tickets suitable for a ${state["budget"]} budget.
+        - Clearly mark which city the user is in for each day.
+        - **Stopover Days:** What to see in {state["stopovers"]}.
+        - **Destination Days:** What to see in {state["destination"]}.
+        - **LOCAL TRANSPORT:** How to move *between* cities and *within* cities.
+        - **LOCAL COSTS:** Specific prices for inter-city travel (e.g., "Bus to Jaipur approx $10").
         
         ## 💰 BUDGET BREAKDOWN
-        - Travel (From {state["origin"]}): estimated cost
-        - Hotels: per night cost
-        - Activities & Local Transport: daily budget (Include specific local prices like boat rides if applicable)
-        - Food: daily budget
+        - Inter-city Travel: Estimated total
+        - Hotels: Cost per city
+        - Food & Activities: Daily estimate
         
-        ## 📋 PRACTICAL TIPS
-        - Safety & Scams
-        - Local apps (RedBus, Uber/Ola equivalents)
-        
-        Make it engaging, practical, and well-formatted.
+        Make it practical, logical (don't zigzag), and well-formatted.
         """
         
         response = llm.invoke(prompt)
@@ -355,12 +375,32 @@ def itinerary_agent(state: TripPlannerState) -> TripPlannerState:
             "error_messages": [f"Itinerary error: {str(e)}"],
         }
 
+def modify_itinerary(current_itinerary: str, instruction: str) -> str:
+    """Modify the itinerary based on user instructions."""
+    try:
+        prompt = f"""
+        You are an expert travel assistant. 
+        Here is the current itinerary:
+        {current_itinerary}
+
+        User Instruction: "{instruction}"
+
+        Please rewrite the itinerary to incorporate the user's changes. 
+        Keep the format consistent with the original itinerary unless asked otherwise.
+        Do not add any conversational filler, just return the updated itinerary.
+        """
+        response = llm.invoke(prompt)
+        return getattr(response, "content", str(response))
+    except Exception as e:
+        return f"Error modifying itinerary: {str(e)}"
+
+
 # PDF Generation Function
 def generate_pdf(itinerary_text: str, destination: str, state) -> BytesIO:
     """Generate PDF from Markdown text."""
     pdf_buffer = BytesIO()
     pdf = MarkdownPdf(toc_level=0)
-    title_md = f"# Trip Itinerary: {destination} (From {state.get('origin', 'N/A')})\n\n"
+    title_md = f"# Trip Itinerary: {state.get('origin', 'Origin')} -> {state.get('stopovers', 'Stopover')} -> {destination}\n\n"
     full_md = title_md + itinerary_text
     pdf.add_section(Section(full_md))
     pdf.save(pdf_buffer)
@@ -427,10 +467,10 @@ def travel_agent(state: TripPlannerState) -> TripPlannerState:
     try:
         origin = state["origin"]
         destination = state["destination"]
+        stopovers = state.get("stopovers", "")
         start_date = state["start_date"]
         
-        # Updated Query to include Trains and RedBus
-        travel_query = f"travel from {origin} to {destination} flights train routes bus redbus price booking {start_date}"
+        travel_query = f"travel from {origin} to {destination} via {stopovers} flights train routes bus redbus price {start_date}"
         
         travel_results = tavily_client.search(
             query=travel_query,
@@ -438,20 +478,24 @@ def travel_agent(state: TripPlannerState) -> TripPlannerState:
             max_results=6
         )
         
-        # Extract structured travel data
         prompt = f"""
-        From these travel search results for traveling from {origin} to {destination}:
+        From these travel search results for traveling from {origin} to {destination} (potentially stopping at {stopovers}):
         {json.dumps([r.get('title', '') + ' - ' + r.get('content', '')[:150] for r in travel_results.get('results', [])])}
         
-        Extract travel options as JSON array. Include Flights, Trains, and Buses (mention RedBus if found).
+        Extract travel options as JSON array. 
+        Focus on identifying connections: 
+        1. {origin} -> {stopovers}
+        2. {stopovers} -> {destination}
+        
         Format:
         [
           {{
             "type": "Flight/Train/Bus",
-            "provider": "Airline/Train Name/Bus Operator",
+            "route": "City A to City B",
+            "provider": "Airline/Train/Bus Name",
             "price": "estimated price",
             "duration": "duration",
-            "booking_info": "where to book (e.g., RedBus, IRCTC)"
+            "booking_info": "where to book"
           }}
         ]
         """
@@ -468,21 +512,24 @@ def travel_agent(state: TripPlannerState) -> TripPlannerState:
         
         return {
             "travel_options": travel_options,
-            "current_step": ["travel_complete"], # updated step name
+            "current_step": ["travel_complete"], 
         }
     except Exception as e:
         return {
             "travel_options": [],
-            "error_messages": [f"Travel search error: {str(e)}"]
+            "error_messages": [f"Travel search error: {str(e)}"],
+            "current_step": ["travel_complete"],
         }
 
 def hotels_agent(state: TripPlannerState) -> TripPlannerState:
     """Search hotels using Tavily"""
     try:
         destination = state["destination"]
+        stopovers = state.get("stopovers", "")
         budget = state["budget"]
         
-        hotel_query = f"best hotels {destination} accommodation booking prices reviews {budget} budget"
+        hotel_query = f"best hotels in {destination} and {stopovers} accommodation prices {budget} budget"
+        
         hotel_results = tavily_client.search(
             query=hotel_query,
             search_depth="advanced",
@@ -490,17 +537,16 @@ def hotels_agent(state: TripPlannerState) -> TripPlannerState:
         )
         
         prompt = f"""
-        From these hotel search results for {destination}:
+        From these hotel search results for {destination} and {stopovers}:
         {json.dumps([r.get('title', '') + ' - ' + r.get('content', '')[:150] for r in hotel_results.get('results', [])])}
         
-        Extract 3-5 hotel options as JSON array:
+        Extract 3-5 hotel options as JSON array (Include options for both cities if possible):
         [
           {{
             "name": "hotel name",
+            "city": "City Name",
             "price_per_night": "price per night",
-            "rating": "star rating or review score",
-            "location": "area/neighborhood",
-            "amenities": "key amenities",
+            "rating": "star rating",
             "booking_platform": "where to book"
           }}
         ]
@@ -524,7 +570,8 @@ def hotels_agent(state: TripPlannerState) -> TripPlannerState:
     except Exception as e:
         return {
             "hotel_options": [],
-            "error_messages": [f"Hotel search error: {str(e)}"]
+            "error_messages": [f"Hotel search error: {str(e)}"],
+            "current_step": ["hotels_complete"],
         }
 
 # Create enhanced workflow with proper parallel execution
@@ -535,7 +582,7 @@ def create_workflow():
     workflow.add_node("research", research_agent)
     workflow.add_node("places", places_agent)
     workflow.add_node("weather", weather_agent)
-    workflow.add_node("travel", travel_agent) # Renamed from flights
+    workflow.add_node("travel", travel_agent) 
     workflow.add_node("hotels", hotels_agent)
     workflow.add_node("activities", activities_agent)
     workflow.add_node("itinerary", itinerary_agent)
@@ -562,7 +609,6 @@ def create_workflow():
     # Barrier condition: proceed only when ALL parallel branches are done
     def _barrier_condition(state: TripPlannerState) -> str:
         steps = set(state.get("current_step", []))
-        # Updated check for travel_complete instead of flights_complete
         required = {"travel_complete", "hotels_complete", "weather_complete"}
         return "go" if required.issubset(steps) else "wait"
 
@@ -596,7 +642,7 @@ def main():
             st.error("Check API keys in secrets")
             st.code("""
             # Add to .streamlit/secrets.toml:
-            GOOGLE_API_KEY = "your_key"
+            GROQ_API_KEY = "your_key"
             TAVILY_API_KEY = "your_key"
             GMAIL_USER = "your_gmail@gmail.com"
             GMAIL_APP_PASSWORD = "your_app_password"
@@ -625,11 +671,11 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            # ADDED: Origin Input
-            origin = st.text_input("🏠 Starting From (Origin)", placeholder="e.g., New Delhi, India")
-            destination = st.text_input("🏙️ Destination", placeholder="e.g., Goa, India")
+            origin = st.text_input("🏠 Starting From (Origin)", placeholder="e.g., New Delhi")
+            destination = st.text_input("🏙️ Main Destination", placeholder="e.g., Jaipur, Rajasthan")
+            stopovers = st.text_input("🛑 Stopovers / En-route Cities (Optional)", placeholder="e.g., Khatushyam Ji, Agra")
+            
             start_date = st.date_input("📅 Start Date", datetime.now() + timedelta(days=7))
-            # CHANGED: Min budget to 0 to allow low starting price
             budget = st.number_input("💰 Budget (USD)", min_value=0, max_value=50000, value=1000, step=50)
         
         with col2:
@@ -641,11 +687,14 @@ def main():
                 default=["Culture", "Food", "Local Experiences"]
             )
         
+        # REMOVED: Trip Preferences (Slider & Text Area)
+
         submitted = st.form_submit_button("🚀 Plan My Amazing Trip!", use_container_width=True)
     
     trip_key = None
     if destination and origin:
-        trip_key = f"trip_{origin}_{destination}_{start_date}_{end_date}_{budget}_{num_travelers}"
+        # Removed num_places from key
+        trip_key = f"trip_{origin}_{destination}_{stopovers}_{start_date}_{end_date}_{budget}"
 
     if submitted and destination and origin and llm:
         if start_date >= end_date:
@@ -662,17 +711,19 @@ def main():
         else:
             with st.spinner("Planning your trip..."):
                 initial_state = TripPlannerState(
-                    origin=origin, # Include Origin in state
+                    origin=origin, 
                     destination=destination,
+                    stopovers=stopovers, 
                     start_date=start_date.strftime("%Y-%m-%d"),
                     end_date=end_date.strftime("%Y-%m-%d"),
                     budget=budget,
                     num_travelers=num_travelers,
                     interests=interests,
+                    # REMOVED: num_places and user_preferences from initial state
                     destination_info={},
                     destination_image=None,
                     places_info=[],
-                    travel_options=[], # Changed from flight_options
+                    travel_options=[], 
                     hotel_options=[],
                     activities=[],
                     weather_info={},
@@ -712,7 +763,7 @@ def main():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                with st.expander("📝 Destination Details"):
+                with st.expander("📝 Destination & Stopover Details"):
                     dest_info = final_state.get("destination_info", {})
                     if dest_info:
                         st.json(dest_info)
@@ -727,19 +778,56 @@ def main():
                         st.write("---")
             
             with col3:
-                # CHANGED: Display Travel Options (Trains/Flights/Bus)
                 with st.expander("🚆 Travel Options (Train/Bus/Flight)"):
                     travel_opts = final_state.get("travel_options", [])
                     if travel_opts:
                         for i, opt in enumerate(travel_opts, 1):
                             st.write(f"**Option {i}: {opt.get('type', 'Transport')}**")
+                            st.write(f"🛣️ Route: {opt.get('route', 'N/A')}")
                             st.write(f"🏢 Provider: {opt.get('provider', 'N/A')}")
                             st.write(f"💰 Price: {opt.get('price', 'N/A')}")
-                            st.write(f"⏱️ Duration: {opt.get('duration', 'N/A')}")
                             st.write(f"ℹ️ Booking: {opt.get('booking_info', 'N/A')}")
                             st.write("---")
                     else:
                         st.info("No specific travel details found. Check RedBus or IRCTC manually.")
+            
+            st.markdown("---")
+            st.subheader("💬 Chat with AI to Modify Itinerary")
+            
+            # Initialize chat history
+            if f"chat_history_{trip_key}" not in st.session_state:
+                st.session_state[f"chat_history_{trip_key}"] = []
+
+            # Display chat messages from history on app rerun
+            for message in st.session_state[f"chat_history_{trip_key}"]:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            # React to user input
+            if prompt := st.chat_input("Make changes (e.g., 'Add a dinner at Chokhi Dhani on Day 2')"):
+                # Display user message in chat message container
+                st.chat_message("user").markdown(prompt)
+                # Add user message to chat history
+                st.session_state[f"chat_history_{trip_key}"].append({"role": "user", "content": prompt})
+                
+                with st.spinner("Updating itinerary..."):
+                    # Modify the itinerary
+                    updated_itinerary = modify_itinerary(final_state["final_itinerary"], prompt)
+                    
+                    # Update state
+                    final_state["final_itinerary"] = updated_itinerary
+                    st.session_state[trip_key] = final_state
+                    
+                    # Display assistant response in chat message container
+                    with st.chat_message("assistant"):
+                        st.markdown("I've updated your itinerary based on your request. Please scroll up to see the changes.")
+                    
+                    # Add assistant response to chat history
+                    st.session_state[f"chat_history_{trip_key}"].append({"role": "assistant", "content": "I've updated your itinerary based on your request. Please scroll up to see the changes."})
+                    
+                    # Force rerun to update the main itinerary view
+                    st.rerun()
+
             
             # PDF Generation
             if f"pdf_buffer_{trip_key}" not in st.session_state:
@@ -764,7 +852,6 @@ def main():
                     use_container_width=True
                 )
             
-            # ADDED: Functional Email Section
             with col_email:
                 with st.form(key=f"email_form_{trip_key}"):
                     st.write("📧 **Send to Email**")

@@ -25,7 +25,7 @@ def run_test():
         # 3. Test Login
         print(f"3. Logging in as {TEST_EMAIL}...")
         server.login(TEST_EMAIL, TEST_PASSWORD)
-        print("   Login successful!")
+        print("Login successful!")
         
         # 4. Test Sending
         print("4. Sending test email...")
@@ -43,15 +43,15 @@ def run_test():
         print("CHECK YOUR INBOX (AND SPAM FOLDER) NOW.")
         
     except smtplib.SMTPAuthenticationError:
-        print("\n❌ AUTH ERROR: Password rejected.")
+        print("\n AUTH ERROR: Password rejected.")
         print("   - check if you pasted the 16-char code correctly (no extra spaces)")
         print("   - check if the email address is 100% correct")
     except TimeoutError:
-        print("\n❌ TIMEOUT ERROR: Connection blocked.")
+        print("\n TIMEOUT ERROR: Connection blocked.")
         print("   - Your Wi-Fi is blocking port 587.")
         print("   - Try switching to a Mobile Hotspot and try again.")
     except Exception as e:
-        print(f"\n❌ OTHER ERROR: {e}")
+        print(f"\n OTHER ERROR: {e}")
 
 if __name__ == "__main__":
     run_test()
