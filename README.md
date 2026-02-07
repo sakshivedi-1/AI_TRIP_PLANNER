@@ -105,7 +105,7 @@ SMTP (Gmail) — Email delivery of itineraries
 ### 🔄 System Workflow
 Code snippet
 ```
-flowchart TD
+#### flowchart TD
     A[Research Agent] --> B[Places Agent]
     B --> C[Travel Agent]
     B --> D[Hotels Agent]
@@ -141,3 +141,22 @@ Itinerary Agent: Assembles all data into a cohesive day-by-day plan.
 
 User Output & Chatbot: The itinerary is displayed, and a Chatbot interface activates, allowing the user to request specific changes (add/remove items) to the plan.
 ```
+
+##  Contributing
+
+I welcome contributions to make this the **ultimate production-ready AI Trip Planner**!
+
+My goal is to evolve this project from a prototype into a robust, real-world travel agent that can handle complex bookings, live updates, and personalized experiences at scale.
+
+###  Roadmap & Vision
+I am actively looking for contributions in the following areas:
+- **Database Integration**: Adding PostgreSQL/Firebase to save user itineraries and login history.
+- **Live Booking**: Integrating real APIs (Amadeus, Skyscanner) for actual booking capabilities.
+- **Frontend Polish**: Enhancing the Streamlit UI or migrating to React/Next.js for a production-grade interface.
+- **Mobile App**: Converting the logic into a React Native or Flutter app.
+
+###  How to Contribute
+1. **Fork the Repository**: Click the "Fork" button at the top right of this page.
+2. **Clone your Fork**:
+   ```bash
+   git clone https://github.com/sakshivedi-1/AI_TRIP_PLANNER.git
