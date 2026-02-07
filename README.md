@@ -1,6 +1,6 @@
 # AI Trip Planner
 
-The **Multi-Agent Trip Planner** is an intelligent travel planning application built using **LangGraph**, **Google Gemini API**, **Tavily API**, and **Wikipedia**.
+The **Multi-Agent Trip Planner** is an intelligent travel planning application built using **LangGraph**, **Groq API**, **Tavily API**, and **Wikipedia**.
 
 It leverages a coordinated set of specialized AI agents to research destinations, analyze travel options (including Flights, Trains, and Buses), and generate a personalized, end-to-end travel itinerary. The system produces detailed, user-specific itineraries with real-time insights, local cost estimates, and supports exporting the final plan as a **PDF** or sending it directly via **Email**.
 
@@ -35,10 +35,14 @@ It leverages a coordinated set of specialized AI agents to research destinations
 ![Screen 9](./demo/image9.png)
 ![Screen 10](./demo/image10.png)
 ![Screen 11](./demo/image11.png)
+![Screen 12](./demo/image13.png)
+![Screen 14](./demo/image14.png)
+![Screen 15](./demo/image15.png)
+
 ### 📄 Sample Itinerary Output
 Check out a real example of an itinerary generated for Varanasi:
 
-[![Varanasi Itinerary Preview](demo/image13.png)](demo/varanasi_itinerary.pdf)
+[![Varanasi Itinerary Preview](demo/image12.png)](demo/varanasi_itinerary.pdf)
 
 [ Click here to download the full PDF](demo/varanasi_itinerary.pdf)
 ---
@@ -60,11 +64,11 @@ source .venv/bin/activate   # Linux / macOS
 pip install -r requirements.txt
 ```
 ### API Key & Email Configuration
-This application requires credentials for Google Gemini, Tavily, and Gmail (for the email feature).
+This application requires credentials for Groq API, Tavily, and Gmail (for the email feature).
 ```
 Create a .streamlit/secrets.toml file (Recommended for Streamlit):
 
-GOOGLE_API_KEY = "your_google_gemini_api_key"
+GROQ_API_KEY = "your_groq_api_key"
 TAVILY_API_KEY = "your_tavily_api_key"
 
 # Optional: Required only if you want to use the Email feature
@@ -86,7 +90,7 @@ LangGraph — Multi-agent orchestration
 
 LangChain — LLM pipeline integration
 
-Google Gemini API — Reasoning, itinerary generation, and cost estimation
+Groq API — Reasoning, itinerary generation, and cost estimation
 
 Tavily API — Real-time web search (Flights, Trains, RedBus, Hotels)
 
@@ -113,7 +117,9 @@ flowchart TD
 
     F -->|All complete| G[Activities Agent]
     G --> H[Itinerary Agent]
-    H --> I[Final Output: PDF / Email]
+    H --> I[Final Output: PDF / Email / Chatbot]
+    I --> J[User Chatbot Interaction (for updation in itinarary) ]
+
 Workflow Explanation
 Research Agent: Gathers foundational destination info and estimates local living costs.
 
@@ -133,5 +139,5 @@ Activities Agent: Curates personalized experiences based on user interests.
 
 Itinerary Agent: Assembles all data into a cohesive day-by-day plan.
 
-User Output: Delivered as a displayed itinerary, downloadable PDF, and via Email.
+User Output & Chatbot: The itinerary is displayed, and a Chatbot interface activates, allowing the user to request specific changes (add/remove items) to the plan.
 ```

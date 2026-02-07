@@ -3,6 +3,7 @@ streamlit
 langchain==0.3.27
 langgraph==0.6.1
 langchain-groq
+#langchain-genai #for gemini api 
 langchain-community
 googlemaps
 wikipedia
