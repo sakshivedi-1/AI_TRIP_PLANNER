@@ -149,7 +149,6 @@ I welcome contributions to make this the **ultimate production-ready AI Trip Pla
 My goal is to evolve this project from a prototype into a robust, real-world travel agent that can handle complex bookings, live updates, and personalized experiences at scale.
 
 ###  Roadmap & Vision
-I am actively looking for contributions in the following areas:
 - **Database Integration**: Adding PostgreSQL/Firebase to save user itineraries and login history.
 - **Live Booking**: Integrating real APIs (Amadeus, Skyscanner) for actual booking capabilities.
 - **Frontend Polish**: Enhancing the Streamlit UI or migrating to React/Next.js for a production-grade interface.
